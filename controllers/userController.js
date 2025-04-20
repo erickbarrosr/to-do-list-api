@@ -60,15 +60,27 @@ const loginUser = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email }).select("+password");
 
   if (user && (await user.matchPassword(password))) {
-    res.json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      token: generateToken(user._id),
-    });
+    const token = generateToken(user._id);
+
+    res
+      .cookie("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production", // garante HTTPS em produção
+        sameSite: "lax", // ou "strict" se quiser mais restrição
+        maxAge: 1000 * 60 * 60 * 24, // 1 dia
+      })
+      .status(200)
+      .json({
+        message: "Login successful",
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+        },
+      });
   } else {
     res.status(401);
-    throw new Error("Invalid email or password");
+    throw new Error("E-mail ou senha inválidos.");
   }
 });
 
